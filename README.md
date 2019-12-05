@@ -3,5 +3,5 @@ Reference implementation / guide to solving the Vertica Dev Xmas 2019 december c
 
 | Door | LINQPad script/source | Blog post
 | --- | --- | --- |
-| 1 | ![Door#1 script](vertica-dev-xmas-2019-door%231.linq) | https://blog.vertica.dk/2019/12/02/deltag-i-verticas-dev-xmas-2019-julekalender/ |
-| 2 | ![Door#2 script](vertica-dev-xmas-2019-door%232.linq) | https://blog.vertica.dk/2019/12/03/vertica-dev-xmas-2019-laage-2/ |
+| 1 | [Door#1 script](vertica-dev-xmas-2019-door%231.linq) | https://blog.vertica.dk/2019/12/02/deltag-i-verticas-dev-xmas-2019-julekalender/ |
+| 2 | [Door#2 script](vertica-dev-xmas-2019-door%232.linq) | https://blog.vertica.dk/2019/12/03/vertica-dev-xmas-2019-laage-2/ |
