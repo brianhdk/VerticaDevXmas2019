@@ -2,8 +2,6 @@
   <Reference>&lt;RuntimeDirectory&gt;\System.Net.Http.dll</Reference>
   <NuGetReference>Microsoft.AspNet.WebApi.Client</NuGetReference>
   <NuGetReference>Newtonsoft.Json</NuGetReference>
-  <Namespace>Elasticsearch.Net</Namespace>
-  <Namespace>Nest</Namespace>
   <Namespace>Newtonsoft.Json</Namespace>
   <Namespace>Newtonsoft.Json.Bson</Namespace>
   <Namespace>Newtonsoft.Json.Converters</Namespace>
