@@ -20,6 +20,7 @@
   <Namespace>Microsoft.Azure.Documents.Client</Namespace>
   <Namespace>Microsoft.Azure.Documents.Spatial</Namespace>
   <Namespace>Microsoft.Azure.Documents</Namespace>
+  <Namespace>System.Xml.Serialization</Namespace>
 </Query>
 
 async Task Main()
@@ -48,7 +49,7 @@ async Task Main()
 
 		if (!apiResponse.IsSuccessStatusCode)
 			throw new InvalidOperationException($"{apiResponse.StatusCode}: {(await apiResponse.Content.ReadAsStringAsync())}");
-			
+
 		var santaRescueResponse = await apiResponse.Content.ReadAsAsync<SantaRescueResponse>();
 
 		var locations = new List<ReindeerLocation>();
@@ -88,8 +89,156 @@ async Task Main()
 		if (!apiResponse.IsSuccessStatusCode)
 			throw new InvalidOperationException($"{apiResponse.StatusCode}: {(await apiResponse.Content.ReadAsStringAsync())}");
 
-		var reindeerRescueResponse = await apiResponse.Content.ReadAsStringAsync();
-		reindeerRescueResponse.Dump();
+		var reindeerRescueResponse = await apiResponse.Content.ReadAsAsync<ReindeerRescueResponse>();
+
+		var toyDistributionXmlDocument = XDocument.Load(reindeerRescueResponse.ToyDistributionXmlUrl.ToString());
+		var toyDistributionProblem = new XmlSerializer(typeof(ToyDistributionProblem)).Deserialize(toyDistributionXmlDocument.CreateReader()) as ToyDistributionProblem;
+		
+		apiResponse = await httpClient.PostAsJsonAsync("/api/toydistribution", new { id = participateResponse.Id, toyDistribution = toyDistributionProblem.CreateSolution() });
+
+		if (!apiResponse.IsSuccessStatusCode)
+			throw new InvalidOperationException($"{apiResponse.StatusCode}: {(await apiResponse.Content.ReadAsStringAsync())}");
+
+		var toyDistributionResponse = await apiResponse.Content.ReadAsStringAsync();
+		toyDistributionResponse.Dump();
+	}
+}
+
+public class ReindeerRescueResponse
+{
+	public Uri ToyDistributionXmlUrl { get; set; }
+}
+
+public class ToyDistributionProblem
+{
+	public Toy[] Toys { get; set; }
+	public Child[] Children { get; set; }
+	
+	public ToyDistributionSolution CreateSolution()
+	{
+		var solution = new ToyDistributionSolution(Toys);
+		
+		Dictionary<Toy, IEnumerable<Child>> toyMapsToChildren = Children
+			.Where(solution.ChildNeedsGift)
+			.SelectMany(x => x.WishList.Toys
+				.Where(solution.ToyIsLeft), (child, toy) => new { child, toy })
+			.GroupBy(x => x.toy, x => x.child)
+			.ToDictionary(x => x.Key, x => x.AsEnumerable());
+
+		while (solution.Remaining > 0)
+		{
+			Toy toy = toyMapsToChildren.First(x => 
+			{
+				var children = x.Value.Where(solution.ChildNeedsGift).ToArray();
+				
+				if (children.Length == 1)
+				{
+					solution.Add(children[0], x.Key);
+					
+					return true;
+				}
+				
+				return false;
+			}).Key;
+			
+			toyMapsToChildren.Remove(toy);
+		}
+
+		return solution;
+	}
+}
+
+public class ToyDistributionSolution : IEnumerable<ToyDistributionSolution.ChildGetsToy>
+{
+	private readonly List<ChildGetsToy> _list;
+	private readonly HashSet<Toy> _toysLeft;
+	private readonly HashSet<Child> _childGotGift;
+	
+	public ToyDistributionSolution(Toy[] toys)
+	{
+		_list = new List<ToyDistributionSolution.ChildGetsToy>();
+
+		_toysLeft = toys.ToHashSet();
+		_childGotGift = new HashSet<Child>();
+	}
+	
+	public bool ToyIsLeft(Toy toy)
+	{
+		return _toysLeft.Contains(toy);
+	}
+	
+	public bool ChildNeedsGift(Child child)
+	{
+		return !ChildGotGift(child);
+	}
+	
+	public bool ChildGotGift(Child child)
+	{
+		return _childGotGift.Contains(child);
+	}
+	
+	public int Remaining => _toysLeft.Count;
+
+	public void Add(Child child, Toy toy)
+	{
+		_list.Add(new ChildGetsToy { ChildName = child.Name, ToyName = toy.Name });
+
+		_toysLeft.Remove(toy);
+		_childGotGift.Add(child);
+	}
+
+	public IEnumerator<ChildGetsToy> GetEnumerator()
+	{
+		return ((IEnumerable<ChildGetsToy>)_list).GetEnumerator();
+	}
+
+	IEnumerator IEnumerable.GetEnumerator()
+	{
+		return ((IEnumerable<ChildGetsToy>)_list).GetEnumerator();
+	}
+
+	public class ChildGetsToy
+	{
+		public string ChildName { get; set; }
+		public string ToyName { get; set; }
+	}
+}
+
+public class Child
+{
+	[XmlAttribute]
+	public string Name { get; set; }
+	public WishList WishList { get; set; }
+}
+
+public class WishList
+{
+	public Toy[] Toys { get; set; }
+}
+
+public class Toy : IEquatable<Toy>
+{
+	[XmlAttribute]
+	public string Name { get; set; }
+
+	public bool Equals(Toy other)
+	{
+		if (ReferenceEquals(null, other)) return false;
+		if (ReferenceEquals(this, other)) return true;
+		return Name == other.Name;
+	}
+
+	public override bool Equals(object obj)
+	{
+		if (ReferenceEquals(null, obj)) return false;
+		if (ReferenceEquals(this, obj)) return true;
+		if (obj.GetType() != GetType()) return false;
+		return Equals((Toy)obj);
+	}
+
+	public override int GetHashCode()
+	{
+		return Name.GetHashCode();
 	}
 }
 

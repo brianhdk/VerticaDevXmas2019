@@ -20,7 +20,7 @@
 
 async Task Main()
 {
-	using (var httpClient = new HttpClient())
+	using (var httpClient = new HttpClient()) // keep as singleton, dispose once your application shuts down
 	{
 		httpClient.BaseAddress = new Uri("https://vertica-xmas2019.azurewebsites.net");
 
